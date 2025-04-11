@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "BiaSense",
+  "version": "1.0.0",
+  "description": "Detects logical fallacies, rhetorical bias, and opinion-based language in web articles",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_popup": "index.html",
+    "default_title": "BiaSense"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["contentScript.js"],
+      "css": ["content.css"],
+      "run_at": "document_end"
+    }
+  ]
+} 
