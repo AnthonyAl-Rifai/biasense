@@ -1,4 +1,10 @@
-export type AnnotationCategory = 'fallacy' | 'bias' | 'opinion' | 'fact';
+export type AnnotationCategory =
+  | 'Framing Bias'
+  | 'Subjective Claim'
+  | 'Source Framing'
+  | 'Logical Fallacy'
+  | 'Factual Inaccuracy'
+  | 'None';
 
 export interface Annotation {
   text: string;
@@ -6,8 +12,9 @@ export interface Annotation {
   subtype: string;
   explanation: string;
   severity: number;
-  startIndex: number;
-  endIndex: number;
+  quoted: boolean;
+  startIndex?: number;
+  endIndex?: number;
 }
 
 export interface AnalysisRequest {

@@ -37,15 +37,18 @@
 .fallacy-tooltip {
   display: none;
   position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
+  box-sizing: border-box;
+  overflow: visible;
+  width: auto;
+  // bottom: 100%;
+  // left: 50%;
+  // transform: translateX(-50%);
   background-color: #fff;
   border: 1px solid #ddd;
   border-radius: 4px;
   padding: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  min-width: 200px;
+  // min-width: 200px;
   max-width: 300px;
   z-index: 1000;
 
