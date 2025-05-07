@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { AnnotationCategory } from '../types';
 
 type Settings = {
@@ -7,11 +7,16 @@ type Settings = {
   aiProvider: 'claude' | 'gpt-4';
 };
 
-const Popup: React.FC = () => {
+const Popup = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [settings, setSettings] = useState<Settings>({
     minSeverity: 0.5,
-    enabledCategories: ['fallacy', 'bias', 'opinion'],
+    enabledCategories: [
+      'Framing Bias',
+      'Subjective Claim',
+      'Source Framing',
+      'Logical Fallacy'
+    ],
     aiProvider: 'claude'
   });
 
@@ -117,7 +122,13 @@ const Popup: React.FC = () => {
         <div className="setting-group">
           <label>Categories</label>
           <div className="category-checkboxes">
-            {(['fallacy', 'bias', 'opinion', 'fact'] as AnnotationCategory[]).map(category => (
+            {([
+              'Framing Bias',
+              'Subjective Claim',
+              'Source Framing',
+              'Logical Fallacy',
+              'Factual Inaccuracy'
+            ] as AnnotationCategory[]).map(category => (
               <label key={category}>
                 <input
                   type="checkbox"
@@ -129,7 +140,7 @@ const Popup: React.FC = () => {
                     handleSettingsChange('enabledCategories', newCategories);
                   }}
                 />
-                {category.charAt(0).toUpperCase() + category.slice(1)}
+                {category}
               </label>
             ))}
           </div>
