@@ -39,6 +39,7 @@ class ContentScript {
     try {
       console.log('Extracting text from page');
       const text = this.extractText();
+      console.log('Extracted text: ', text);
       console.log('Extracted text length:', text.length);
       
       // Get current settings from storage
@@ -72,40 +73,52 @@ class ContentScript {
   }
 
   private extractText(): string {
-    // Get all text nodes in the document
+    // Try to target the main article container first
+    const container =
+      document.querySelector('article, [role="main"], .article, .main-content, .post, .entry-content') ||
+      document.body;
+  
     const walker = document.createTreeWalker(
-      document.body,
+      container,
       NodeFilter.SHOW_TEXT,
       {
         acceptNode: (node) => {
-          // Skip script and style elements
-          if (node.parentElement?.tagName === 'SCRIPT' || 
-              node.parentElement?.tagName === 'STYLE') {
+          const parentTag = node.parentElement?.tagName;
+          if (!parentTag) return NodeFilter.FILTER_REJECT;
+  
+          if (['SCRIPT', 'STYLE', 'NOSCRIPT', 'IFRAME', 'HEADER', 'FOOTER', 'NAV'].includes(parentTag)) {
             return NodeFilter.FILTER_REJECT;
           }
+  
+          // Avoid invisible or zero-size elements
+          const computedStyle = window.getComputedStyle(node.parentElement);
+          if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden') {
+            return NodeFilter.FILTER_REJECT;
+          }
+  
           return NodeFilter.FILTER_ACCEPT;
         }
       }
     );
-
+  
     const texts: string[] = [];
     let currentNode: Node | null = walker.nextNode();
     while (currentNode) {
-      if (currentNode.textContent?.trim()) {
-        texts.push(currentNode.textContent.trim());
-      }
+      const content = currentNode.textContent?.trim();
+      if (content) texts.push(content);
       currentNode = walker.nextNode();
     }
-
+  
     return texts.join('\n\n');
   }
+  
 
   private highlightText(annotations: Annotation[]) {
     this.clearHighlights();
     console.log('Starting to highlight annotations:', annotations);
 
     annotations.forEach((annotation, index) => {
-      const { text } = annotation;
+      const { text, quoted } = annotation;
       console.log(`Processing annotation ${index + 1}/${annotations.length}:`, annotation);
       const range = document.createRange();
 
@@ -154,10 +167,13 @@ class ContentScript {
       if (found) {
         try {
           const span = document.createElement('span');
-          span.className = `fallacy-highlight fallacy-${annotation.category}`;
+          span.className = `fallacy-highlight fallacy-${annotation.category.replace(/\s+/g, '-').toLowerCase()}`;
           span.dataset.fallacyType = annotation.subtype;
           span.dataset.explanation = annotation.explanation;
           span.dataset.severity = annotation.severity.toString();
+          if (quoted) {
+            span.classList.add('fallacy-quoted');
+          }
 
           range.surroundContents(span);
           this.highlightedTexts.push({
@@ -248,6 +264,7 @@ class ContentScript {
   }
 
   private addTooltip(element: HTMLElement, annotation: Annotation) {
+    // Create tooltip and set its content
     const tooltip = document.createElement('div');
     tooltip.className = 'fallacy-tooltip';
     tooltip.innerHTML = `
@@ -257,13 +274,25 @@ class ContentScript {
       </div>
       <div class="tooltip-explanation">${annotation.explanation}</div>
     `;
+    // Only set essential inline styles for positioning
+    tooltip.style.position = 'absolute';
+    tooltip.style.zIndex = '9999';
+    tooltip.style.display = 'none';
+    document.body.appendChild(tooltip);
 
-    element.appendChild(tooltip);
-
-    element.addEventListener('mouseenter', () => {
+    // Position and show tooltip on mouseenter
+    element.addEventListener('mouseenter', (e) => {
+      const rect = element.getBoundingClientRect();
       tooltip.style.display = 'block';
+      // Default: show above if possible, else below
+      const tooltipHeight = tooltip.offsetHeight || 80;
+      const top = rect.top + window.scrollY - tooltipHeight - 8;
+      const left = rect.left + window.scrollX;
+      tooltip.style.top = `${top > 0 ? top : rect.bottom + window.scrollY + 8}px`;
+      tooltip.style.left = `${left}px`;
     });
 
+    // Hide tooltip on mouseleave
     element.addEventListener('mouseleave', () => {
       tooltip.style.display = 'none';
     });
