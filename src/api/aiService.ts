@@ -28,29 +28,69 @@ interface AnthropicResponse {
 }
 
 const createAnalysisPrompt = (text: string): string => {
-  return `You are a critical thinking assistant trained to identify flaws in argumentation and rhetoric.
+  return `You are a critical thinking assistant helping users analyze news articles for rhetorical flaws and biased language. Your goal is to help readers identify statements that distort truth, obscure evidence, or shape perception through language or structure.
 
-For the following text, perform the following steps:
+Your task is to analyze the following text and highlight rhetorical issues. Follow these steps:
+
 1. Read the full paragraph to understand context.
-2. Highlight sentences or phrases that contain:
-   - Logical fallacies (e.g., Strawman, Slippery Slope)
-   - Rhetorical bias or emotionally charged language
-   - Subjective opinions presented as objective facts
 
-For each match, return a JSON array of objects with these exact properties:
-- text: The exact matched text
-- category: One of "fallacy", "bias", "opinion", or "fact"
-- subtype: A specific label (e.g., "Ad Hominem", "Loaded Language")
-- explanation: A brief explanation (1-2 sentences)
-- severity: A number between 0.0 and 1.0
+2. Identify **every distinct issue** that fits one of the following categories. For each issue, extract the **shortest exact phrase or sentence** that contains the problem:
 
-IMPORTANT: Respond ONLY with a valid JSON array. Do not include any other text or formatting.
+📚 **Category Options**:
+- **Framing Bias**: emotionally loaded or manipulative language used to shape reader perception
+  - *Subtypes*: Loaded Language, Euphemism, Dysphemism, Alarmism
+- **Subjective Claim**: an opinion, speculation, or assumption presented as fact
+  - *Subtypes*: Speculation, Unsubstantiated Assertion, Value Judgment
+- **Source Framing**: selective quoting, vague sourcing, or one-sided examples
+  - *Subtypes*: Cherry Picking, Passive Attribution, False Balance
+- **Logical Fallacy**: flawed argument structure
+  - *Subtypes*: Strawman, Slippery Slope, Ad Hominem, False Dilemma
+- **Factual Inaccuracy** (optional): demonstrably false or misleading factual statements
+  - *Subtypes*: Debunked Claim, Misused Statistic
+- **None**: skip anything that does not clearly fit one of these
+
+⚠️ Do not flag statements inside clearly attributed quotes (e.g., from a speaker or source) unless:
+- The article author appears to endorse or repeat the claim without criticism
+- The quote itself uses emotionally charged or misleading language
+
+3. For each issue, return a JSON object with the following keys:
+- text: the exact matched phrase or sentence
+- category: one of the categories above
+- subtype: the specific subtype
+- explanation: 1–2 sentences explaining the issue
+- severity: a number between 0.0 and 1.0
+- quoted: true if the issue appears inside a quote, otherwise false
+
+🧠 Return as many issues as you find — aim for full coverage of the text. Do not stop early or provide just a few examples.
+
+CRITICAL INSTRUCTIONS:
+- Return ONLY a valid JSON array, with no explanatory text before or after
+- Escape any internal double quotes using \\\"
+- Do not overlap highlights
+- Be conservative: if unsure, skip it
+
+Example:
+[
+  {
+    "text": "obviously just trying to make money",
+    "category": "Subjective Claim",
+    "subtype": "Speculation",
+    "explanation": "The phrase implies a motive without evidence, framing it as fact.",
+    "severity": 0.6,
+    "quoted": false
+  }
+]
 
 Text to analyze:
 """
 ${text}
 """`;
 };
+
+
+
+
+
 
 export class AIService {
   private apiKey: string;
@@ -167,12 +207,13 @@ export class AIService {
         }
 
         // Map the parsed annotations to our Annotation type
-        return parsed.map((annotation: RawAnnotation) => ({
+        return parsed.map((annotation: any) => ({
           text: annotation.text,
           category: annotation.category as Annotation['category'],
           subtype: annotation.subtype,
           explanation: annotation.explanation,
           severity: annotation.severity,
+          quoted: annotation.quoted ?? false,
           startIndex: annotation.startIndex || 0,
           endIndex: annotation.endIndex || 0
         }));
@@ -190,12 +231,13 @@ export class AIService {
             return [];
           }
 
-          return parsed.map((annotation: RawAnnotation) => ({
+          return parsed.map((annotation: any) => ({
             text: annotation.text,
             category: annotation.category as Annotation['category'],
             subtype: annotation.subtype,
             explanation: annotation.explanation,
             severity: annotation.severity,
+            quoted: annotation.quoted ?? false,
             startIndex: annotation.startIndex || 0,
             endIndex: annotation.endIndex || 0
           }));
